@@ -107,11 +107,17 @@ pub enum EntidOrLookupRefOrTempId {
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialOrd, PartialEq)]
 pub enum OpType {
     Add,
+    Cache,
     Retract,
 }
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialOrd, PartialEq)]
 pub enum Entity {
+    Cache {
+        e: EntidOrLookupRefOrTempId,
+        a: Entid,
+        v: AtomOrLookupRefOrVectorOrMapNotation
+    },
     // Like [:db/add|:db/retract e a v].
     AddOrRetract {
         op: OpType,

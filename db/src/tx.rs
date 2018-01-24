@@ -484,6 +484,19 @@ impl<'conn, 'a> Tx<'conn, 'a> {
                         terms.push(Term::AddOrRetract(op, e, a, v));
                     }
                 },
+                Entity::Cache { e, a, v} => {
+                    let a = in_process.entity_a_into_term_a(a)?;
+                    let attribute = self.schema.require_attribute_for_entid(a)?;
+                    let v = if let entmod::AtomOrLookupRefOrVectorOrMapNotation::Atom(v) = v {
+                        let typed_value: TypedValue = self.schema.to_typed_value(&v.without_spans(), attribute.value_type)?;
+                        Either::Left(typed_value)
+                    } else {
+                        unimplemented!();
+                    };
+
+                    let e = in_process.entity_e_into_term_e(e)?;
+                    terms.push(Term::Cache(e, a, v));
+                },
             }
         };
         Ok((terms, in_process.temp_ids, in_process.lookup_refs))
@@ -500,6 +513,11 @@ impl<'conn, 'a> Tx<'conn, 'a> {
                     let e = replace_lookup_ref(&lookup_ref_map, e, |x| KnownEntid(x))?;
                     let v = replace_lookup_ref(&lookup_ref_map, v, |x| TypedValue::Ref(x))?;
                     Ok(Term::AddOrRetract(op, e, a, v))
+                },
+                Term::Cache(e, a, v) => {
+                    let e = replace_lookup_ref(&lookup_ref_map, e, |x| KnownEntid(x))?;
+                    let v = replace_lookup_ref(&lookup_ref_map, v, |x| TypedValue::Ref(x))?;
+                    Ok(Term::Cache(e, a, v))
                 },
             }
         }).collect::<Result<Vec<_>>>()
@@ -607,6 +625,12 @@ impl<'conn, 'a> Tx<'conn, 'a> {
         // Assertions that are :db.cardinality/many and :db.fulltext.
         let mut fts_many: Vec<db::ReducedEntity> = vec![];
 
+        // Assertions to be added to the cache.
+        let mut attributes_to_cache: Vec<db::CachedEntity> = vec![];
+
+        // Assertions to be added to the cache.
+        let mut cache_attributes_to_remove: Vec<db::CachedEntity> = vec![];
+
         // We need to ensure that callers can't blindly transact entities that haven't been
         // allocated by this store.
 
@@ -628,6 +652,17 @@ impl<'conn, 'a> Tx<'conn, 'a> {
                         (false, false) => non_fts_one.push(reduced),
                         (true, false) => fts_one.push(reduced),
                         (true, true) => fts_many.push(reduced),
+                    }
+                },
+                Term::Cache(e, a, v) => {
+                    let attribute: &Attribute = self.schema.require_attribute_for_entid(a)?;
+                    if let TypedValue::Boolean(cache) = v {
+                        let cached = (e.0, a, attribute, v);
+                        if cache {
+                            attributes_to_cache.push(cached);
+                        } else {
+                            cache_attributes_to_remove.push(cached);
+                        }
                     }
                 },
             }
@@ -655,6 +690,15 @@ impl<'conn, 'a> Tx<'conn, 'a> {
 
         if !fts_many.is_empty() {
             self.store.insert_fts_searches(&fts_many[..], db::SearchType::Exact)?;
+        }
+
+
+        if !attributes_to_cache.is_empty() {
+            // TODO: insert cached attributes into store.
+        }
+
+        if !cache_attributes_to_remove.is_empty() {
+            // TODO: remove cached attributes from store.
         }
 
         self.store.commit_transaction(self.tx_id)?;

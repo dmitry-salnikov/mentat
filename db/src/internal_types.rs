@@ -34,6 +34,7 @@ use mentat_tx::entities::{
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialOrd, PartialEq)]
 pub enum Term<E, V> {
+    Cache(E, Entid, V),
     AddOrRetract(OpType, E, Entid, V),
 }
 
@@ -68,6 +69,7 @@ impl TermWithTempIds {
     pub fn unwrap(self) -> TermWithoutTempIds {
         match self {
             Term::AddOrRetract(op, Left(n), a, Left(v)) => Term::AddOrRetract(op, n, a, v),
+            Term::Cache(Left(n), a, Left(v)) => Term::Cache(n, a, v),
             _ => unreachable!(),
         }
     }

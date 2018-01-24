@@ -499,6 +499,9 @@ pub fn read_db(conn: &rusqlite::Connection) -> Result<DB> {
 /// Internal representation of an [e a v added] datom, ready to be transacted against the store.
 pub type ReducedEntity<'a> = (Entid, Entid, &'a Attribute, TypedValue, bool);
 
+/// Internal representation of an [e a v] datom, ready to be transacted against the store.
+pub type CachedEntity<'a> = (Entid, Entid, &'a Attribute, TypedValue);
+
 #[derive(Clone,Debug,Eq,Hash,Ord,PartialOrd,PartialEq)]
 pub enum SearchType {
     Exact,
@@ -1383,6 +1386,18 @@ mod tests {
         assert_matches!(conn.datoms(),
                         "[[101 :db.schema/version 2]
                           [200 :db.schema/attribute 101]]");
+    }
+
+
+    #[test]
+    fn test_cache() {
+        let mut conn = TestConn::default();
+
+        // Test true adds to cache
+        assert_transact!(conn, "[[:db/cache :db.schema/version :db/cached true]]");
+
+        // Test false removes from cache
+        assert_transact!(conn, "[[:db/cache :db.schema/version :db/cached false]]");
     }
 
     // TODO: don't use :db/ident to test upserts!

@@ -124,6 +124,12 @@ impl Generation {
                 Term::AddOrRetract(op, Left(e), a, Left(v)) => {
                     inert.push(Term::AddOrRetract(op, Left(e), a, Left(v)));
                 },
+                Term::Cache(Left(e), a, Left(v)) => {
+                    inert.push(Term::Cache(Left(e), a, Left(v)));
+                },
+                Term::Cache(e, a, v) => {
+                    generation.allocations.push(Term::Cache(e, a, v));
+                },
             }
         }
 
@@ -189,6 +195,10 @@ impl Generation {
                     }
                 },
                 Term::AddOrRetract(_, Left(_), _, Left(_)) => unreachable!(),
+                Term::Cache(_e, _a, _v) => {
+                    println!("Cached attribute!: upsert_resolution::term");
+                    unimplemented!("[:db/cache ...]");
+                }
             }
         }
 
@@ -233,6 +243,11 @@ impl Generation {
                     // [:db/retract ...] entities never allocate entids; they have to resolve due to
                     // other upserts (or they fail the transaction).
                 },
+                &Term::AddOrRetract(OpType::Cache, _, _, _) => unreachable!(),
+                &Term::Cache(_, _, _) => {
+                    println!("Cached attribute!: upsert_resolution::temp_ids_in_allocations");
+                    unimplemented!("[:db/cache ...]");
+                }
             }
         }
 
@@ -258,6 +273,7 @@ impl Generation {
                         (op, Some(&n1), Some(&n2)) => Term::AddOrRetract(op, n1, a, TypedValue::Ref(n2.0)),
                         (OpType::Add, _, _) => unreachable!(), // This is a coding error -- every tempid in a :db/add entity should resolve or be allocated.
                         (OpType::Retract, _, _) => bail!(ErrorKind::NotYetImplemented(format!("[:db/retract ...] entity referenced tempid that did not upsert: one of {}, {}", t1, t2))),
+                        (OpType::Cache, _, _) => bail!(ErrorKind::NotYetImplemented(format!("[:db/cache ...] entity referenced tempid that did not upsert: one of {}, {}", t1, t2))),
                     }
                 },
                 Term::AddOrRetract(op, Right(t), a, Left(v)) => {
@@ -265,6 +281,7 @@ impl Generation {
                         (op, Some(&n)) => Term::AddOrRetract(op, n, a, v),
                         (OpType::Add, _) => unreachable!(), // This is a coding error.
                         (OpType::Retract, _) => bail!(ErrorKind::NotYetImplemented(format!("[:db/retract ...] entity referenced tempid that did not upsert: {}", t))),
+                        (OpType::Cache, _) => bail!(ErrorKind::NotYetImplemented(format!("[:db/cache ...] entity referenced tempid that did not upsert: {}", t))),
                     }
                 },
                 Term::AddOrRetract(op, Left(e), a, Right(t)) => {
@@ -272,9 +289,14 @@ impl Generation {
                         (op, Some(&n)) => Term::AddOrRetract(op, e, a, TypedValue::Ref(n.0)),
                         (OpType::Add, _) => unreachable!(), // This is a coding error.
                         (OpType::Retract, _) => bail!(ErrorKind::NotYetImplemented(format!("[:db/retract ...] entity referenced tempid that did not upsert: {}", t))),
+                        (OpType::Cache, _) => bail!(ErrorKind::NotYetImplemented(format!("[:db/cache ...] entity referenced tempid that did not upsert: {}", t))),
                     }
                 },
                 Term::AddOrRetract(_, Left(_), _, Left(_)) => unreachable!(), // This is a coding error -- these should not be in allocations.
+                Term::Cache(_e, _a, _v) => {
+                    println!("Cached attribute!: upsert_resolution::into_final_populations");
+                    bail!(ErrorKind::NotYetImplemented("[:db/cache ...]".to_string()));
+                }
             };
             populations.allocated.push(allocated);
         }
