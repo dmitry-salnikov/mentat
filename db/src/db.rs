@@ -535,6 +535,9 @@ pub trait MentatStoring {
     fn insert_non_fts_searches<'a>(&self, entities: &'a [ReducedEntity], search_type: SearchType) -> Result<()>;
     fn insert_fts_searches<'a>(&self, entities: &'a [ReducedEntity], search_type: SearchType) -> Result<()>;
 
+    fn insert_into_cache<'a>(&self, entities: &'a [CachedEntity<'a>]) -> Result<()>;
+    fn remove_from_cache<'a>(&self, entities: &'a [CachedEntity<'a>]) -> Result<()>;
+
     /// Finalize the underlying storage layer after a Mentat transaction.
     ///
     /// Use this to finalize temporary tables, complete indices, revert pragmas, etc, after the
@@ -941,6 +944,16 @@ impl MentatStoring for rusqlite::Connection {
             .chain_err(|| "Could not drop fts search ids!")?;
 
         results.map(|_| ())
+    }
+
+    // TODO: insert cached attributes into store.
+    fn insert_into_cache<'a>(&self, entities: &'a [CachedEntity<'a>]) -> Result<()> {
+        bail!(ErrorKind::NotYetImplemented(format!("insert_into_cache {:?}", entities)))
+    }
+
+    // TODO: remove cached attributes from store.
+    fn remove_from_cache<'a>(&self, entities: &'a [CachedEntity<'a>]) -> Result<()>{
+        bail!(ErrorKind::NotYetImplemented(format!("remove_from_cache {:?}", entities)))
     }
 
     fn commit_transaction(&self, tx_id: Entid) -> Result<()> {
@@ -1394,10 +1407,12 @@ mod tests {
         let mut conn = TestConn::default();
 
         // Test true adds to cache
-        assert_transact!(conn, "[[:db/cache :db.schema/version :db/cached true]]");
+        assert_transact!(conn, "[[:db/cache :db.schema/version :db/cached true]]",
+                         Err("not yet implemented: insert_into_cache [(38, 40, Attribute { value_type: Boolean, multival: false, unique: None, index: false, fulltext: false, component: false, cached: false }, Boolean(true))]"));
 
         // Test false removes from cache
-        assert_transact!(conn, "[[:db/cache :db.schema/version :db/cached false]]");
+        assert_transact!(conn, "[[:db/cache :db.schema/version :db/cached false]]",
+                         Err("not yet implemented: remove_from_cache [(38, 40, Attribute { value_type: Boolean, multival: false, unique: None, index: false, fulltext: false, component: false, cached: false }, Boolean(false))]"));
     }
 
     // TODO: don't use :db/ident to test upserts!

@@ -694,11 +694,11 @@ impl<'conn, 'a> Tx<'conn, 'a> {
 
 
         if !attributes_to_cache.is_empty() {
-            // TODO: insert cached attributes into store.
+            self.store.insert_into_cache(&attributes_to_cache)?;
         }
 
         if !cache_attributes_to_remove.is_empty() {
-            // TODO: remove cached attributes from store.
+            self.store.remove_from_cache(&cache_attributes_to_remove)?;
         }
 
         self.store.commit_transaction(self.tx_id)?;
