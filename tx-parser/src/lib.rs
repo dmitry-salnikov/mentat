@@ -119,9 +119,29 @@ def_matches_namespaced_keyword!(Tx, literal_db_add, "db", "add");
 
 def_matches_namespaced_keyword!(Tx, literal_db_retract, "db", "retract");
 
+def_matches_namespaced_keyword!(Tx, literal_db_cache, "db", "cache");
+
+//
+def_parser!(Tx, cache, Entity, {
+    vector().of_exactly(
+        // TODO: This commits as soon as it sees :db/cache, but could use an improved error message.
+        (Tx::literal_db_cache(),
+            try((Tx::entid_or_lookup_ref_or_temp_id(),
+                Tx::forward_entid(),
+                Tx::atom().map(|x| x.clone()).map(AtomOrLookupRefOrVectorOrMapNotation::Atom))))
+        .map(|(_, (e, a, v))| {
+            Entity::Cache {
+                e: e,
+                a: a,
+                v: v,
+            }
+        }))
+});
+
+
 def_parser!(Tx, add_or_retract, Entity, {
     vector().of_exactly(
-        // TODO: This commits as soon as it sees :db/{add,retract}, but could use an improved error message.
+        // TODO: This commits as soon as it sees :db/{add,retract, cache}, but could use an improved error message.
         (Tx::literal_db_add().map(|_| OpType::Add).or(Tx::literal_db_retract().map(|_| OpType::Retract)),
           try((Tx::entid_or_lookup_ref_or_temp_id(),
                Tx::forward_entid(),
@@ -131,12 +151,12 @@ def_parser!(Tx, add_or_retract, Entity, {
                    Tx::entid_or_lookup_ref_or_temp_id()))
               .map(|(v, a, e)| (e, a, v))))
             .map(|(op, (e, a, v))| {
-                Entity::AddOrRetract {
-                    op: op,
-                    e: e,
-                    a: a,
-                    v: v,
-                }
+                        Entity::AddOrRetract {
+                            op: op,
+                            e: e,
+                            a: a,
+                            v: v,
+                        }
             }))
 });
 
@@ -149,8 +169,11 @@ def_parser!(Tx, map_notation, MapNotation, {
 });
 
 def_parser!(Tx, entity, Entity, {
-    Tx::add_or_retract()
-        .or(Tx::map_notation().map(Entity::MapNotation))
+    choice::<[&mut Parser<Input = _, Output = Entity>; 3], _>
+        ([&mut try(Tx::add_or_retract()),
+          &mut try(Tx::cache()),
+          &mut try(Tx::map_notation().map(Entity::MapNotation)),
+        ])
 });
 
 def_parser!(Tx, entities, Vec<Entity>, {
@@ -339,5 +362,25 @@ mod tests {
 
         assert_eq!(result,
                    Ok(Entity::MapNotation(expected)));
+    }
+
+    #[test]
+    fn test_cache() {
+        let input = Value::Vector(vec![kw("db", "cache"),
+                                       kw("test", "entid"),
+                                       kw("db", "cached"),
+                                       Value::Boolean(true)]);
+
+        let input = input.with_spans();
+        let stream = input.atom_stream();
+        let result = Tx::entity().parse(stream).map(|x| x.0);
+
+        assert_eq!(result,
+                   Ok(Entity::Cache {
+                       e: EntidOrLookupRefOrTempId::Entid(Entid::Ident(NamespacedKeyword::new("test",
+                                                                                              "entid"))),
+                       a: Entid::Ident(NamespacedKeyword::new("db", "cached")),
+                       v: AtomOrLookupRefOrVectorOrMapNotation::Atom(ValueAndSpan::new(SpannedValue::Boolean(true), Span(34, 38))),
+                   }));
     }
 }
