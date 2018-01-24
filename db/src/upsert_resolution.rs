@@ -124,11 +124,11 @@ impl Generation {
                 Term::AddOrRetract(op, Left(e), a, Left(v)) => {
                     inert.push(Term::AddOrRetract(op, Left(e), a, Left(v)));
                 },
-                Term::Cache(Left(e), a, Left(v)) => {
-                    inert.push(Term::Cache(Left(e), a, Left(v)));
+                Term::Cache(a, Left(v)) => {
+                    inert.push(Term::Cache(a, Left(v)));
                 },
-                Term::Cache(e, a, v) => {
-                    generation.allocations.push(Term::Cache(e, a, v));
+                Term::Cache(a, v) => {
+                    generation.allocations.push(Term::Cache(a, v));
                 },
             }
         }
@@ -195,7 +195,7 @@ impl Generation {
                     }
                 },
                 Term::AddOrRetract(_, Left(_), _, Left(_)) => unreachable!(),
-                Term::Cache(_e, _a, _v) => {
+                Term::Cache(_a, _v) => {
                     println!("Cached attribute!: upsert_resolution::term");
                     unimplemented!("[:db/cache ...]");
                 }
@@ -244,7 +244,7 @@ impl Generation {
                     // other upserts (or they fail the transaction).
                 },
                 &Term::AddOrRetract(OpType::Cache, _, _, _) => unreachable!(),
-                &Term::Cache(_, _, _) => {
+                &Term::Cache(_, _) => {
                     println!("Cached attribute!: upsert_resolution::temp_ids_in_allocations");
                     unimplemented!("[:db/cache ...]");
                 }
@@ -293,7 +293,7 @@ impl Generation {
                     }
                 },
                 Term::AddOrRetract(_, Left(_), _, Left(_)) => unreachable!(), // This is a coding error -- these should not be in allocations.
-                Term::Cache(_e, _a, _v) => {
+                Term::Cache(_a, _v) => {
                     println!("Cached attribute!: upsert_resolution::into_final_populations");
                     bail!(ErrorKind::NotYetImplemented("[:db/cache ...]".to_string()));
                 }

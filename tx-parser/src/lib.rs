@@ -127,12 +127,10 @@ def_parser!(Tx, cache, Entity, {
         // TODO: This commits as soon as it sees :db/cache, but could use an improved error message.
         // TODO: Figure out how to do away with the attribute part as the entity is the only thing we care about.
         (Tx::literal_db_cache(),
-            try((Tx::entid_or_lookup_ref_or_temp_id(),
-                Tx::forward_entid(),
+            try((Tx::forward_entid(),
                 Tx::atom().map(|x| x.clone()).map(AtomOrLookupRefOrVectorOrMapNotation::Atom))))
-        .map(|(_, (e, a, v))| {
+        .map(|(_, (a, v))| {
             Entity::Cache {
-                e: e,
                 a: a,
                 v: v,
             }
@@ -369,7 +367,6 @@ mod tests {
     fn test_cache() {
         let input = Value::Vector(vec![kw("db", "cache"),
                                        kw("test", "entid"),
-                                       kw("db", "cached"),
                                        Value::Boolean(true)]);
 
         let input = input.with_spans();
@@ -378,10 +375,8 @@ mod tests {
 
         assert_eq!(result,
                    Ok(Entity::Cache {
-                       e: EntidOrLookupRefOrTempId::Entid(Entid::Ident(NamespacedKeyword::new("test",
-                                                                                              "entid"))),
-                       a: Entid::Ident(NamespacedKeyword::new("db", "cached")),
-                       v: AtomOrLookupRefOrVectorOrMapNotation::Atom(ValueAndSpan::new(SpannedValue::Boolean(true), Span(34, 38))),
+                       a: Entid::Ident(NamespacedKeyword::new("test", "entid")),
+                       v: AtomOrLookupRefOrVectorOrMapNotation::Atom(ValueAndSpan::new(SpannedValue::Boolean(true), Span(23, 27))),
                    }));
     }
 }

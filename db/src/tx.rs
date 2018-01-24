@@ -484,18 +484,13 @@ impl<'conn, 'a> Tx<'conn, 'a> {
                         terms.push(Term::AddOrRetract(op, e, a, v));
                     }
                 },
-                Entity::Cache { e, a, v} => {
-                    let a = in_process.entity_a_into_term_a(a)?;
-                    let attribute = self.schema.require_attribute_for_entid(a)?;
-                    let v = if let entmod::AtomOrLookupRefOrVectorOrMapNotation::Atom(v) = v {
-                        let typed_value: TypedValue = self.schema.to_typed_value(&v.without_spans(), attribute.value_type)?;
-                        Either::Left(typed_value)
-                    } else {
-                        unimplemented!();
-                    };
+                Entity::Cache { a, v} => {
+                    if let entmod::AtomOrLookupRefOrVectorOrMapNotation::Atom(v) = v {
+                        let a = in_process.entity_a_into_term_a(a)?;
 
-                    let e = in_process.entity_e_into_term_e(e)?;
-                    terms.push(Term::Cache(e, a, v));
+                        let typed_value: TypedValue = self.schema.to_typed_value(&v.without_spans(), ValueType::Boolean)?;
+                        terms.push(Term::Cache(a, Either::Left(typed_value)));
+                    }
                 },
             }
         };
@@ -514,10 +509,9 @@ impl<'conn, 'a> Tx<'conn, 'a> {
                     let v = replace_lookup_ref(&lookup_ref_map, v, |x| TypedValue::Ref(x))?;
                     Ok(Term::AddOrRetract(op, e, a, v))
                 },
-                Term::Cache(e, a, v) => {
-                    let e = replace_lookup_ref(&lookup_ref_map, e, |x| KnownEntid(x))?;
+                Term::Cache(a, v) => {
                     let v = replace_lookup_ref(&lookup_ref_map, v, |x| TypedValue::Ref(x))?;
-                    Ok(Term::Cache(e, a, v))
+                    Ok(Term::Cache(a, v))
                 },
             }
         }).collect::<Result<Vec<_>>>()
@@ -654,10 +648,10 @@ impl<'conn, 'a> Tx<'conn, 'a> {
                         (true, true) => fts_many.push(reduced),
                     }
                 },
-                Term::Cache(e, a, v) => {
+                Term::Cache(a, v) => {
                     let attribute: &Attribute = self.schema.require_attribute_for_entid(a)?;
                     if let TypedValue::Boolean(cache) = v {
-                        let cached = (e.0, a, attribute, v);
+                        let cached = (a, attribute, v);
                         if cache {
                             attributes_to_cache.push(cached);
                         } else {

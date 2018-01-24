@@ -114,7 +114,6 @@ pub enum OpType {
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialOrd, PartialEq)]
 pub enum Entity {
     Cache {
-        e: EntidOrLookupRefOrTempId,
         a: Entid,
         v: AtomOrLookupRefOrVectorOrMapNotation
     },

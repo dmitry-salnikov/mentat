@@ -499,8 +499,9 @@ pub fn read_db(conn: &rusqlite::Connection) -> Result<DB> {
 /// Internal representation of an [e a v added] datom, ready to be transacted against the store.
 pub type ReducedEntity<'a> = (Entid, Entid, &'a Attribute, TypedValue, bool);
 
-/// Internal representation of an [e a v] datom, ready to be transacted against the store.
-pub type CachedEntity<'a> = (Entid, Entid, &'a Attribute, TypedValue);
+/// Internal representation of a cached attribure [a v] where a is the entid of the attribute to be cached
+/// and v is a flag determining of the value is to be added to or removed from the cache.
+pub type CachedEntity<'a> = (Entid, &'a Attribute, TypedValue);
 
 #[derive(Clone,Debug,Eq,Hash,Ord,PartialOrd,PartialEq)]
 pub enum SearchType {
@@ -1407,12 +1408,12 @@ mod tests {
         let mut conn = TestConn::default();
 
         // Test true adds to cache
-        assert_transact!(conn, "[[:db/cache :db.schema/version :db/cached true]]",
-                         Err("not yet implemented: insert_into_cache [(38, 40, Attribute { value_type: Boolean, multival: false, unique: None, index: false, fulltext: false, component: false, cached: false }, Boolean(true))]"));
+        assert_transact!(conn, "[[:db/cache :db.schema/version true]]",
+                         Err("not yet implemented: insert_into_cache [(38, Attribute { value_type: Long, multival: false, unique: None, index: false, fulltext: false, component: false, cached: false }, Boolean(true))]"));
 
         // Test false removes from cache
-        assert_transact!(conn, "[[:db/cache :db.schema/version :db/cached false]]",
-                         Err("not yet implemented: remove_from_cache [(38, 40, Attribute { value_type: Boolean, multival: false, unique: None, index: false, fulltext: false, component: false, cached: false }, Boolean(false))]"));
+        assert_transact!(conn, "[[:db/cache :db.schema/version false]]",
+                         Err("not yet implemented: remove_from_cache [(38, Attribute { value_type: Long, multival: false, unique: None, index: false, fulltext: false, component: false, cached: false }, Boolean(false))]"));
     }
 
     // TODO: don't use :db/ident to test upserts!
