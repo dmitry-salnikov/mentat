@@ -125,6 +125,7 @@ def_matches_namespaced_keyword!(Tx, literal_db_cache, "db", "cache");
 def_parser!(Tx, cache, Entity, {
     vector().of_exactly(
         // TODO: This commits as soon as it sees :db/cache, but could use an improved error message.
+        // TODO: Figure out how to do away with the attribute part as the entity is the only thing we care about.
         (Tx::literal_db_cache(),
             try((Tx::entid_or_lookup_ref_or_temp_id(),
                 Tx::forward_entid(),
