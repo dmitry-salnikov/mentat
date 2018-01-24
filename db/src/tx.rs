@@ -619,11 +619,8 @@ impl<'conn, 'a> Tx<'conn, 'a> {
         // Assertions that are :db.cardinality/many and :db.fulltext.
         let mut fts_many: Vec<db::ReducedEntity> = vec![];
 
-        // Assertions to be added to the cache.
-        let mut attributes_to_cache: Vec<db::CachedEntity> = vec![];
-
-        // Assertions to be added to the cache.
-        let mut cache_attributes_to_remove: Vec<db::CachedEntity> = vec![];
+        // Operations to be performed on the the cache.
+        let mut cache_attributes: Vec<db::CachedEntity> = vec![];
 
         // We need to ensure that callers can't blindly transact entities that haven't been
         // allocated by this store.
@@ -650,14 +647,8 @@ impl<'conn, 'a> Tx<'conn, 'a> {
                 },
                 Term::Cache(a, v) => {
                     let attribute: &Attribute = self.schema.require_attribute_for_entid(a)?;
-                    if let TypedValue::Boolean(cache) = v {
-                        let cached = (a, attribute, v);
-                        if cache {
-                            attributes_to_cache.push(cached);
-                        } else {
-                            cache_attributes_to_remove.push(cached);
-                        }
-                    }
+                    let cached = (a, attribute, v);
+                    cache_attributes.push(cached);
                 },
             }
         }
@@ -687,12 +678,8 @@ impl<'conn, 'a> Tx<'conn, 'a> {
         }
 
 
-        if !attributes_to_cache.is_empty() {
-            self.store.insert_into_cache(&attributes_to_cache)?;
-        }
-
-        if !cache_attributes_to_remove.is_empty() {
-            self.store.remove_from_cache(&cache_attributes_to_remove)?;
+        if !cache_attributes.is_empty() {
+            self.store.update_cache(&cache_attributes)?;
         }
 
         self.store.commit_transaction(self.tx_id)?;
