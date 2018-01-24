@@ -1409,11 +1409,11 @@ mod tests {
 
         // Test true adds to cache
         assert_transact!(conn, "[[:db/cache :db.schema/version true]]",
-                         Err("not yet implemented: insert_into_cache [(38, Attribute { value_type: Long, multival: false, unique: None, index: false, fulltext: false, component: false, cached: false }, Boolean(true))]"));
+                         Err("not yet implemented: insert_into_cache [(38, Attribute { value_type: Long, multival: false, unique: None, index: false, fulltext: false, component: false }, Boolean(true))]"));
 
         // Test false removes from cache
         assert_transact!(conn, "[[:db/cache :db.schema/version false]]",
-                         Err("not yet implemented: remove_from_cache [(38, Attribute { value_type: Long, multival: false, unique: None, index: false, fulltext: false, component: false, cached: false }, Boolean(false))]"));
+                         Err("not yet implemented: remove_from_cache [(38, Attribute { value_type: Long, multival: false, unique: None, index: false, fulltext: false, component: false }, Boolean(false))]"));
     }
 
     // TODO: don't use :db/ident to test upserts!
