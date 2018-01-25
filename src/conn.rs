@@ -123,7 +123,7 @@ pub trait Queryable {
 /// Your changes will be implicitly dropped along with this struct.
 pub struct InProgress<'a, 'c> {
     transaction: rusqlite::Transaction<'c>,
-    conn: &'a Conn,
+    mutex: &'a Mutex<Metadata>,
     generation: u64,
     partition_map: PartitionMap,
     schema: Schema,
@@ -168,8 +168,7 @@ impl<'a, 'c> Queryable for InProgress<'a, 'c> {
     fn q_prepare<T>(&self, query: &str, inputs: T) -> PreparedResult
         where T: Into<Option<QueryInputs>> {
 
-        q_prepare(&self.conn,
-                  &*(self.transaction),
+        q_prepare(&*(self.transaction),
                   &self.schema,
                   query,
                   inputs)
@@ -299,7 +298,7 @@ impl<'a, 'c> InProgress<'a, 'c> {
 
     pub fn commit(self) -> Result<()> {
         // The mutex is taken during this entire method.
-        let mut metadata = self.conn.metadata.lock().unwrap();
+        let mut metadata = self.mutex.lock().unwrap();
 
         if self.generation != metadata.generation {
             // Somebody else wrote!
@@ -403,7 +402,7 @@ impl Conn {
         };
 
         Ok(InProgress {
-            conn: self,
+            mutex: &self.metadata,
             transaction: tx,
             generation: current_generation,
             partition_map: current_partition_map,

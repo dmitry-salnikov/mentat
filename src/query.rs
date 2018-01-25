@@ -13,10 +13,6 @@ use rusqlite::types::ToSql;
 
 use std::rc::Rc;
 
-use conn::{
-    Conn,
-};
-
 use mentat_core::{
     Entid,
     HasSchema,
@@ -77,38 +73,26 @@ use errors::{
 };
 
 pub type QueryExecutionResult = Result<QueryResults>;
-pub type PreparedResult<'conn, 'sqlite> = Result<PreparedQuery<'conn, 'sqlite>>;
+pub type PreparedResult<'sqlite> = Result<PreparedQuery<'sqlite>>;
 
-pub enum PreparedQuery<'conn, 'sqlite> {
+pub enum PreparedQuery<'sqlite> {
     Empty {
-        conn: &'conn Conn,
-        schema: Schema,
         find_spec: FindSpec,
     },
     Bound {
-        conn: &'conn Conn,
-        schema: Schema,
         statement: rusqlite::Statement<'sqlite>,
         args: Vec<(String, Rc<rusqlite::types::Value>)>,
         projector: Box<Projector>,
     },
 }
 
-impl<'conn, 'sqlite> PreparedQuery<'conn, 'sqlite> {
+impl<'sqlite> PreparedQuery<'sqlite> {
     pub fn run<T>(&mut self, _inputs: T) -> QueryExecutionResult where T: Into<Option<QueryInputs>> {
         match self {
-            &mut PreparedQuery::Empty { ref conn, ref schema, ref find_spec } => {
-                let current_schema = &*conn.current_schema();
-                if current_schema != schema {
-                    bail!(ErrorKind::PreparedQuerySchemaMismatch)
-                }
+            &mut PreparedQuery::Empty { ref find_spec } => {
                 Ok(QueryResults::empty(find_spec))
             },
-            &mut PreparedQuery::Bound { ref conn, ref schema, ref mut statement, ref args, ref projector } => {
-                let current_schema = &*conn.current_schema();
-                if current_schema != schema {
-                    bail!(ErrorKind::PreparedQuerySchemaMismatch)
-                }
+            &mut PreparedQuery::Bound { ref mut statement, ref args, ref projector } => {
                 let rows = run_statement(statement, args)?;
                 projector
                       .project(rows)
@@ -337,12 +321,11 @@ pub fn q_once<'sqlite, 'schema, 'query, T>
     run_algebrized_query(sqlite, algebrized)
 }
 
-pub fn q_prepare<'conn, 'sqlite, 'schema, 'query, T>
-(conn: &'conn Conn,
- sqlite: &'sqlite rusqlite::Connection,
+pub fn q_prepare<'sqlite, 'schema, 'query, T>
+(sqlite: &'sqlite rusqlite::Connection,
  schema: &'schema Schema,
  query: &'query str,
- inputs: T) -> PreparedResult<'conn, 'sqlite>
+ inputs: T) -> PreparedResult<'sqlite>
         where T: Into<Option<QueryInputs>>
 {
     let algebrized = algebrize_query_str(schema, query, inputs)?;
@@ -355,8 +338,6 @@ pub fn q_prepare<'conn, 'sqlite, 'schema, 'query, T>
     if algebrized.is_known_empty() {
         // We don't need to do any SQL work at all.
         return Ok(PreparedQuery::Empty {
-            conn,
-            schema: schema.clone(),
             find_spec: algebrized.find_spec,
         });
     }
@@ -366,8 +347,6 @@ pub fn q_prepare<'conn, 'sqlite, 'schema, 'query, T>
     let statement = sqlite.prepare(sql.as_str())?;
 
     Ok(PreparedQuery::Bound {
-        conn,
-        schema: schema.clone(),
         statement,
         args,
         projector: select.projector
